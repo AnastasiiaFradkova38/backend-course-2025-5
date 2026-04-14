@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const fsPromises = require('fs').promises;
+const superagent = require('superagent');
 
 program
   .requiredOption('-h, --host <type>')
@@ -26,11 +27,19 @@ const server = http.createServer(async (request, response) => {
     case "GET":
       try {
         const data = await fsPromises.readFile(filePath);
-        response.writeHead(200, "Content-Type: image/jpeg");
+        response.writeHead(200, { "Content-Type": "image/jpeg" });
         response.end(data);
       } catch (error) {
-        response.writeHead(404);
-        response.end("File not found.");
+        try {
+          const externalResponse = await superagent.get(`https://http.cat/${code}`);
+          const image = externalResponse.body;
+          await fsPromises.writeFile(filePath, image);
+          response.writeHead(200, { "Content-Type": "image/jpeg" });
+          response.end(image);
+        } catch (error) {
+          response.writeHead(404);
+          response.end("File not found.");
+        }
       }
       break;
     case "PUT":
